@@ -110,15 +110,25 @@ namespace SocketData
 
     public class SocketHandler
     {
-        public static readonly ushort PORT = 8080;
-        public static readonly uint BUFFSIZE = 1024;
-        public static readonly ushort MAX_CONNECTIONS = 10;
+        public string TruncationCheckCommand(string command, int startIndex, int length)
+        {
+            command = command.Substring(startIndex, command.Length - startIndex);
+            if (command.Length < length)
+            {
+                return (command);
+            }
+            return (command.Substring(0, length));
+        }
 
-        public static readonly int CONNECT_TIMEOUT = 30000;
-        public static readonly int SEND_TIMEOUT = 20000;
-        public static readonly int RECEIVE_TIMEOUT = 15000;
+        public static ushort PORT;
+        public static uint BUFFSIZE;
 
-        public static readonly int EVENT_CHECK_INTERVAL = 3000;
+        public static ushort MAX_CONNECTIONS;
+
+        public static int CONNECT_TIMEOUT;
+        public static int SEND_TIMEOUT;
+        public static int RECEIVE_TIMEOUT;
+        public static int EVENT_CHECK_INTERVAL;
 
         protected SocketOperations _SocketOperations = new SocketOperations();
 
@@ -126,7 +136,41 @@ namespace SocketData
 
         public SocketHandler()
         {
-
+            using (StreamReader ConfigFile = new StreamReader(@"..\..\..\TrojanBuild\trojan.cfg"))
+            {
+                if (ConfigFile == null) throw new ExceptionHandler("Config file not found : " + nameof(ConfigFile));
+                string line;
+                while((line = ConfigFile.ReadLine()) != null)
+                {
+                    string[] LineParts = line.Split(" ");
+                    switch (LineParts[0])
+                    {
+                        case "port":
+                            PORT = ushort.Parse(LineParts[2]);
+                            break;
+                        case "buffsize":
+                            BUFFSIZE = uint.Parse(LineParts[2]);
+                            break;
+                        case "max_connections":
+                            MAX_CONNECTIONS = ushort.Parse(LineParts[2]);
+                            break;
+                        case "connect_timeout":
+                            CONNECT_TIMEOUT = int.Parse(LineParts[2]);
+                            break;
+                        case "send_timeout":
+                            SEND_TIMEOUT = int.Parse(LineParts[2]);
+                            break;
+                        case "receive_timeout":
+                            RECEIVE_TIMEOUT = int.Parse(LineParts[2]);
+                            break;
+                        case "event_check_interval":
+                            EVENT_CHECK_INTERVAL = int.Parse(LineParts[2]);
+                            break;
+                        default: throw new ExceptionHandler("All values not set in trojan.cfg file : " + nameof(ConfigFile));
+                            
+                    }
+                }
+            }
         }
     }
 }

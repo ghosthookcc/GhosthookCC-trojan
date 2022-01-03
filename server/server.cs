@@ -42,18 +42,22 @@ namespace Trojan
                     {
                         try
                         {
-                            if (CMD.Substring(0, 5) == "local")
+                            if (TruncationCheckCommand(CMD, 0, 5) == "local")
                             {
-                                if (CMD.Substring(6, 3) == "cls" || CMD.Substring(6, 5) == "clear")
+                                if (TruncationCheckCommand(CMD, 6, 3) == "cls" || TruncationCheckCommand(CMD, 6, 5) == "clear")
                                 {
                                     Console.Clear();
                                 }
-                                else if (CMD.Substring(6, 4) == "help")
+                                else if (TruncationCheckCommand(CMD, 6, 4) == "exit")
+                                {
+                                    Environment.Exit(0);
+                                }
+                                else if (TruncationCheckCommand(CMD, 6, 4) == "help")
                                 {
                                     // Display help menu
                                 }
                             }
-                            else if (CMD.Substring(0, 4) == "conn" || CMD.Substring(0, 7) == "connect")
+                            else if (TruncationCheckCommand(CMD, 0, 4) == "conn" || TruncationCheckCommand(CMD, 0, 7) == "connect")
                             {
                                 string[] arguments = CMD.Substring(3).Split(" ");
                                 if(connectedToClient != ConnectionManager.connections[int.Parse(arguments[1]) - 1].getConn())
@@ -66,10 +70,10 @@ namespace Trojan
                                     Console.WriteLine("\n[|] You are already connected to connection[" + int.Parse(arguments[1]) + "]");
                                 }
                             }
-                            else if (CMD.Substring(0, 2) == "do")
+                            else if (TruncationCheckCommand(CMD, 0, 2) == "do")
                             {
                                 string[] arguments = CMD.Substring(1).Split(" ");
-                                if(arguments[1] == "list_connections")
+                                if(arguments[1] == "list")
                                 {
                                     int IncrementalCounter = 0;
                                     int RangeCounter = -1;
@@ -78,7 +82,7 @@ namespace Trojan
                                     foreach (ConnectionSetup connection in ConnectionManager.connections)
                                     {
                                         if (RangeCounter != 0) 
-                                        { 
+                                        {  
                                             IncrementalCounter++; 
                                         } else { break; }
 
@@ -89,7 +93,7 @@ namespace Trojan
                                     }
                                 }
                             }
-                        } catch (Exception) { failedCMD = true; }
+                        } catch (Exception error) { Console.WriteLine(error);  failedCMD = true; }
 
                         if (connectedToClient != null && !failedCMD && sendCMD)
                         {

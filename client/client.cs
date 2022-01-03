@@ -64,7 +64,6 @@ namespace Trojan
             await _SocketOperations.Connect_Socket(Connector4);
             Task Connector4Receiver = Task.Factory.StartNew(() => Receive_Socket(Connector4, Timeout.Infinite));
 
-
             Connector5 = _SocketOperations.Init_Socket(IPAddress.Parse("192.168.0.35"), new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
             await _SocketOperations.Connect_Socket(Connector5);
             Task Connector5Receiver = Task.Factory.StartNew(() => Receive_Socket(Connector5, Timeout.Infinite));
