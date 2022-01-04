@@ -1,22 +1,12 @@
 ﻿using System;
-using System.Net;
-using System.Net.Sockets;
 using System.Diagnostics;
-using System.Threading;
+using Trojan.server;
+using Trojan.client;
 using SocketData;
 
 namespace Trojan
 {
-    enum ServerStatus
-    {
-        RUNNING = 0,
-        STOPPED = 1,
-        OUTPUTTING = 2,
-        IDLE = 3,
-        CRASHED = 4,
-    }
-
-    class Trojan
+    public class TrojanBaseClass
     {
         static internal void BuildTrojanStub()
         {
@@ -36,20 +26,17 @@ namespace Trojan
 
         public Server server = new Server();
         public Client client = new Client();
-        public static ServerStatus status = ServerStatus.RUNNING;
-
-        
 
         static async Task Main()
         {
-            Trojan Trojan = new Trojan();
+            TrojanBaseClass TrojanBase = new TrojanBaseClass();
 
-            Trojan.server.Init_Server(SocketHandler.PORT, SocketHandler.BUFFSIZE);
-            await Trojan.client.Init_Client(SocketHandler.PORT, SocketHandler.BUFFSIZE);
+            TrojanBase.server.Init_Server(SocketHandler.PORT, SocketHandler.BUFFSIZE);
+            await TrojanBase.client.Init_Client(SocketHandler.PORT, SocketHandler.BUFFSIZE);
 
-            while(status == ServerStatus.RUNNING)
+            while(true)
             {
-
+ 
             }
         }
     }

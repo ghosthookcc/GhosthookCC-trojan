@@ -1,13 +1,42 @@
 ﻿using System;
+using System.Text;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using Trojan;
-using TrojanExceptions;
+using Trojan.exceptions;
+using SocketData.operations;
 
 namespace SocketData
 {
-    static class ConnectionManager
+    public enum ServerStatus
+    {
+        RUNNING = 0,
+        STOPPED = 1,
+        IDLE = 2,
+        WAITRESPONSE = 3,
+        OUTPUTTING = 4,
+    }
+
+    public enum CommandName
+    {
+        GATHER,
+    }
+
+    static class CommandExtension
+    {
+        public static string ExecuteCommand(this CommandName command)
+        {
+            switch(command)
+            {
+                case CommandName.GATHER:
+                    return("AHEHE");
+                default:
+                    return("AHEHE?");
+            }
+        }
+    }
+
+    public class ConnectionManager
     {
         public static List<ConnectionSetup> connections = new List<ConnectionSetup>();
         public static Queue<string> DataQueue = new Queue<string>();
@@ -17,12 +46,12 @@ namespace SocketData
         {
             Console.WriteLine("\r##########################################################################################################################################");
             DataArray = DataQueue.ToArray();
-            foreach(string Data in DataArray)
+            foreach (string Data in DataArray)
             {
                 string message = "[+] Received_FromClient[{0}] :: Message_Size[{1} bytes]";
-                Console.WriteLine("\n\n\t" + message, Data, UTF8Encoding.UTF8.GetByteCount(Data));
-                Console.Write("\t" + new String('*', message.Length + Data.Length - 4));
-                DataQueue.Dequeue();  
+                Console.WriteLine("\n\n\t" + message, Data, Encoding.UTF8.GetByteCount(Data));
+                Console.Write("\t" + new string('*', message.Length + Data.Length - 4));
+                DataQueue.Dequeue();
             }
             Console.WriteLine("\n\n##########################################################################################################################################");
         }
@@ -36,13 +65,13 @@ namespace SocketData
         public Socket getConn()
         {
             if (_s_conn == null) throw new ExceptionHandler("[-] Connection socket can not be null : " + nameof(_s_conn));
-            return(_s_conn);
+            return _s_conn;
         }
 
         public byte[] getBuffer()
         {
             if (_buffer == null) throw new ExceptionHandler("[-] Buffer can not be null : " + nameof(_buffer));
-            return(_buffer);
+            return _buffer;
         }
 
         public void setBuffer(byte[] buffer)
@@ -56,7 +85,7 @@ namespace SocketData
         public EndPoint getRemoteEndPoint()
         {
             if (_s_conn.RemoteEndPoint == null) throw new ExceptionHandler("[-] RemoteEndPoint can not be null : " + nameof(_s_conn.RemoteEndPoint));
-            return(_s_conn.RemoteEndPoint);
+            return _s_conn.RemoteEndPoint;
         }
 
         public ConnectionSetup(Socket s_conn, byte[] buffer)
@@ -73,7 +102,7 @@ namespace SocketData
         public string getUUID()
         {
             if (_UUID == null) throw new ExceptionHandler("[-] UUID can not be null : " + nameof(_UUID));
-            return(_UUID);
+            return _UUID;
         }
 
         private IPEndPoint? _s_EndPoint = null;
@@ -87,7 +116,7 @@ namespace SocketData
         public IPEndPoint getEndPoint()
         {
             if (_s_EndPoint == null) throw new ExceptionHandler("[-] EndPoint not set : " + nameof(_s_EndPoint));
-            return(_s_EndPoint);
+            return _s_EndPoint;
         }
 
         public Socket? sock = null;
@@ -103,7 +132,7 @@ namespace SocketData
 
             this.port = port;
             this.buffSize = buffSize;
-            
+
             buffer = new byte[buffSize];
         }
     }
@@ -115,11 +144,14 @@ namespace SocketData
             command = command.Substring(startIndex, command.Length - startIndex);
             if (command.Length < length)
             {
-                return (command);
+                return command;
             }
-            return (command.Substring(0, length));
+            return command.Substring(0, length);
         }
 
+        public string CheckForCommand(string input) { return(""); }
+        public string RespondToCommand(Socket sock) { return(""); }
+        
         public static ushort PORT;
         public static uint BUFFSIZE;
 
@@ -131,6 +163,8 @@ namespace SocketData
         public static int EVENT_CHECK_INTERVAL;
 
         protected SocketOperations _SocketOperations = new SocketOperations();
+        public ServerStatus ServerStatus = ServerStatus.STOPPED;
+        public ServerStatus SenderStatus = ServerStatus.IDLE;
 
         private byte[] buffer = new byte[BUFFSIZE];
 
@@ -140,7 +174,7 @@ namespace SocketData
             {
                 if (ConfigFile == null) throw new ExceptionHandler("Config file not found : " + nameof(ConfigFile));
                 string line;
-                while((line = ConfigFile.ReadLine()) != null)
+                while ((line = ConfigFile.ReadLine()) != null)
                 {
                     string[] LineParts = line.Split(" ");
                     switch (LineParts[0])
@@ -167,7 +201,6 @@ namespace SocketData
                             EVENT_CHECK_INTERVAL = int.Parse(LineParts[2]);
                             break;
                         default: throw new ExceptionHandler("All values not set in trojan.cfg file : " + nameof(ConfigFile));
-                            
                     }
                 }
             }

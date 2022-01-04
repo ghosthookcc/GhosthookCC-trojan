@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Text;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using Trojan;
+using Trojan.exceptions;
 using SocketData;
-using TrojanExceptions;
-namespace Trojan
+
+namespace Trojan.client
 {
     public class Client : SocketHandler
     {
@@ -16,7 +18,7 @@ namespace Trojan
 
         public async Task Send_Socket(Socket sock, string message, int SendTimeout)
         {
-            if (sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(socketSetup.sock));
+            if (sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(sock));
 
             await sock.SendAsync(Encoding.UTF8.GetBytes(message), SocketFlags.None);
         }

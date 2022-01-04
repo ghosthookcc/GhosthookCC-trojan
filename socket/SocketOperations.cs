@@ -1,12 +1,12 @@
 ﻿using System;
+using System.Text;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Diagnostics;
 using Trojan;
-using TrojanExceptions;
+using Trojan.client;
+using Trojan.exceptions;
 
-namespace SocketData
+namespace SocketData.operations
 {
     public class SocketOperations
     {
@@ -15,7 +15,7 @@ namespace SocketData
             socketSetup.setEndPoint(new IPEndPoint(address, socketSetup.port));
             socketSetup.sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-            return(socketSetup);
+            return socketSetup;
         }
 
         public void Bind_Socket(socketSetup socketSetup)
@@ -42,7 +42,7 @@ namespace SocketData
             }
         }
 
-        public async Task Accept_Socket(socketSetup socketSetup)
+        public async Task Accept_Socket(socketSetup socketSetup, ServerStatus SenderStatus)
         {
             while (true)
             {
