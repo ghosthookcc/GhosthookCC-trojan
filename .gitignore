@@ -1,6 +1,7 @@
 bin
 obj
-
-Trojan
-Trojan.sln
-Trojan.csproj
+client/bin
+client/obj
+stub
+Trojan.csproj.bak
+client/client.csproj.bak

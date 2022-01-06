@@ -2,7 +2,7 @@
 
 namespace Trojan.exceptions
 {
-    internal class ExceptionHandler : Exception
+    public class ExceptionHandler : Exception
     {
         public ExceptionHandler() { }
 
