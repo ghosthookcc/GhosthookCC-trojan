@@ -85,6 +85,15 @@ namespace Trojan.server
 
                                 sendCMD = true;
                             }
+                            else if (TruncationCheckCommand(CMD, 0, 7) == "console")
+                            {
+                                if (connectedToClient == null)
+                                {
+                                    Console.WriteLine("\n[|] you need to connect to a clint before executing client-side commands");
+                                }
+
+                                sendCMD = true;
+                            }
                             else if (TruncationCheckCommand(CMD, 0, 2) == "do")
                             {
                                 string[] arguments = CMD.Substring(1).Split(" ");
@@ -146,7 +155,7 @@ namespace Trojan.server
                 await Task.Delay(EVENT_CHECK_INTERVAL);
 
                 if (SenderStatus == ServerStatus.WAITRESPONSE)
-                {
+                {   
                     for (int i = 0; i < ConnectionManager.connections.Count(); i++)
                     {
                         CurrentConnection = ConnectionManager.connections[i];
