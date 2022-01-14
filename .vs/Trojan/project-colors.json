@@ -11,31 +11,11 @@
       "DisplayName": "Miscellaneous Files",
       "ColorIndex": -1
     },
-    "1659aaab-f99f-4d56-ae54-df90843229a7": {
-      "ProjectGuid": "1659aaab-f99f-4d56-ae54-df90843229a7",
-      "DisplayName": "TrojanClient",
-      "ColorIndex": 1
-    },
-    "70890621-d843-4bae-bc56-39f0514d1d5a": {
-      "ProjectGuid": "70890621-d843-4bae-bc56-39f0514d1d5a",
-      "DisplayName": "client",
-      "ColorIndex": 2
-    },
-    "3abbde51-4612-4562-8efb-893a126362b2": {
-      "ProjectGuid": "3abbde51-4612-4562-8efb-893a126362b2",
-      "DisplayName": "client",
-      "ColorIndex": 3
-    },
-    "47d91faa-ebe9-4898-a2ff-74ceb53db24c": {
-      "ProjectGuid": "47d91faa-ebe9-4898-a2ff-74ceb53db24c",
-      "DisplayName": "client",
-      "ColorIndex": 4
-    },
     "08c935ab-ae61-40d0-bafe-e839213063d6": {
       "ProjectGuid": "08c935ab-ae61-40d0-bafe-e839213063d6",
       "DisplayName": "client",
-      "ColorIndex": 5
+      "ColorIndex": 1
     }
   },
-  "NextColorIndex": 6
+  "NextColorIndex": 2
 }

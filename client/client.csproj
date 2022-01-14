@@ -8,6 +8,7 @@
 	<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	<StartupObject></StartupObject>
+	<AssemblyName>game</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
